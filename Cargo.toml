@@ -1,0 +1,14 @@
+[package]
+name = "runit"
+version = "0.1.0"
+edition = "2021"
+description = "Fuzzy-pick une commande depuis des fiches markdown, remplit ses <parametres>, et la sort prete a lancer"
+
+# Le binaire s'appelle `runit`. Collision possible avec l'init runit :
+# pour le renommer, change simplement la ligne `name` ci-dessous.
+[[bin]]
+name = "runit"
+path = "src/main.rs"
+
+# MVP volontairement sans dependance : std seul, s'appuie sur fzf en externe.
+[dependencies]
