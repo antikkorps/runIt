@@ -15,20 +15,36 @@ la fiche derrière la commande** (preview), le tout dans une interface de saisie
 
 Limite assumée du MVP : ça **imprime**, ça n'insère pas encore dans le prompt.
 
-## P1 — le rendre utilisable au quotidien
+## P1 — le widget, clé de voûte
 
-- [ ] **Widget shell (zsh)** : un raccourci clavier qui *insère* la commande dans
-      la ligne de commande au lieu de l'imprimer. C'est LE cran qui fait passer de
-      démo à outil. (~10 lignes de zsh, cf. `navi widget zsh`.)
-- [ ] **Config de la racine** : un fichier `~/.config/runit/config` ou un défaut
-      sensé, pour ne plus passer `RUNIT_ROOT` à chaque appel.
-- [ ] **Erreurs claires** : fzf absent, `/dev/tty` indisponible, racine vide →
-      message utile plutôt qu'un panic.
+Décision : runIt **vit à travers le widget** (pas d'usage « lancé seul » à
+soigner). Une seule mécanique de widget débloque trois capacités d'un coup.
+
+- [ ] **Widget zsh — insérer au curseur** : le raccourci insère la commande
+      assemblée à la position du curseur (`LBUFFER`), il ne *remplace* pas la
+      ligne. De cette seule règle découlent :
+  - **saisie à la volée** — la commande atterrit dans le prompt, prête ;
+  - **complétion de chemin par le shell (Philosophie 2)** — le `<param>` de type
+    chemin est laissé vide, curseur posé dessus, et c'est **ton zsh** qui complète
+    (Tab, `~`, globs, tes fonctions) ; on ne réimplémente pas la complétion ;
+  - **composition de pipes** — comme on insère au curseur et que le widget est
+    ré-invocable : `foo |` → widget → `grep …` s'insère → `|` → widget → … Rien
+    de plus à coder, ça tombe de « insérer au curseur » + « ré-invocable ».
+- [ ] **Protocole curseur/trou** : comment le widget sait où poser le curseur.
+      Pistes : runIt émet `offset\tcommande`, ou un caractère sentinelle retiré par
+      le widget. Curseur sur le 1er trou si présent, sinon en bout de ligne.
+- [ ] **Garde-fou** : runIt insère du texte, **le shell possède le pipe**. Ne pas
+      chercher à « comprendre » le pipeline (colonnes de l'étage n vers n+1…) —
+      c'est le piège navi sous une autre forme.
+- [ ] **Config de la racine** : `~/.config/runit/config` ou défaut, pour ne plus
+      passer `RUNIT_ROOT` à chaque appel.
+- [ ] **Erreurs claires** : fzf absent, `/dev/tty` indisponible, racine vide.
 
 ## P2 — remplissage des variables (le cœur différenciant)
 
-- [ ] **Suggestions par variable** : `<fichier>` / `<path>` → menu `fd`. Heuristique
-      par nom de variable ; free-text sinon. (Le manque qu'on a vu dans navi.)
+- [ ] **Suggestions pour les variables énumérables** : `<sep>`, `<niveau>`… → menu
+      d'une liste fixe. Les variables de type **chemin** ne sont PAS ici : elles
+      passent par la complétion du shell (Ph. 2, cf. P1), pas par un menu `fd`.
 - [ ] **Mémoire des saisies** : reproposer la dernière valeur utilisée pour un
       `<param>` donné.
 - [ ] **Annulation propre** au milieu du remplissage (Échap → on ne sort rien).
