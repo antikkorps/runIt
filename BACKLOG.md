@@ -1,124 +1,133 @@
 # runIt — backlog
 
-Petit outil : fuzzy-pick une commande depuis des fiches markdown, remplir ses
-`<paramètres>`, la sortir prête à lancer. La fiche reste la **source unique** —
-pas de `.cheat` intermédiaire. Ce que navi ne fait pas : garder **le détail de
-la fiche derrière la commande** (preview), le tout dans une interface de saisie.
+What it is and how the notes must look: see the [README](README.md) — not
+repeated here. This file holds the **state** and **what comes next**.
 
-## État actuel (MVP)
+North star: what navi does not do is keep **the detail of the note behind the
+command** (preview), all of it inside a typing interface. Guardrail: do not
+reimplement navi feature by feature.
 
-- [x] parse markdown → snippets shell (une ligne = un snippet, `#` = description)
-- [x] fzf pour choisir, avec preview de la section de fiche
-- [x] remplissage des `<param>` (jamais les `$VAR`), saisie au clavier
-- [x] commande assemblée **imprimée** sur stdout
-- [x] zéro dépendance (std + fzf externe), 3 tests unitaires
+## Current state (MVP)
 
-Limite assumée du MVP : ça **imprime**, ça n'insère pas encore dans le prompt.
+- [x] parse markdown → shell snippets (one line = one snippet, `#` = description)
+- [x] fzf to pick, with a preview of the note's section
+- [x] filling of the `<param>` holes (never the `$VAR`), typed at the keyboard
+- [x] assembled command **printed** on stdout
+- [x] zero dependency (std + external fzf), 3 unit tests
 
-## P1 — le widget, clé de voûte
+Accepted limit of the MVP: it **prints**, it does not insert into the prompt yet.
 
-Décision : runIt **vit à travers le widget** (pas d'usage « lancé seul » à
-soigner). Une seule mécanique de widget débloque trois capacités d'un coup.
+## P1 — the widget, keystone
 
-- [ ] **Widget zsh — insérer au curseur** : le raccourci insère la commande
-      assemblée à la position du curseur (`LBUFFER`), il ne *remplace* pas la
-      ligne. De cette seule règle découlent :
-  - **saisie à la volée** — la commande atterrit dans le prompt, prête ;
-  - **complétion de chemin par le shell (Philosophie 2)** — le `<param>` de type
-    chemin est laissé vide, curseur posé dessus, et c'est **ton zsh** qui complète
-    (Tab, `~`, globs, tes fonctions) ; on ne réimplémente pas la complétion ;
-  - **composition de pipes** — comme on insère au curseur et que le widget est
-    ré-invocable : `foo |` → widget → `grep …` s'insère → `|` → widget → … Rien
-    de plus à coder, ça tombe de « insérer au curseur » + « ré-invocable ».
-- [ ] **Protocole curseur/trou** : comment le widget sait où poser le curseur.
-      Pistes : runIt émet `offset\tcommande`, ou un caractère sentinelle retiré par
-      le widget. Curseur sur le 1er trou si présent, sinon en bout de ligne.
-- [ ] **Garde-fou** : runIt insère du texte, **le shell possède le pipe**. Ne pas
-      chercher à « comprendre » le pipeline (colonnes de l'étage n vers n+1…) —
-      c'est le piège navi sous une autre forme.
-- [ ] **Config de la racine** : `~/.config/runit/config` ou défaut, pour ne plus
-      passer `RUNIT_ROOT` à chaque appel.
-- [ ] **Erreurs claires** : fzf absent, `/dev/tty` indisponible, racine vide.
+Decision: runIt **lives through the widget** (no "run on its own" experience to
+polish). A single widget mechanism unlocks three capabilities at once.
 
-## P2 — remplissage des variables (le cœur différenciant)
+- [ ] **zsh widget — insert at the cursor**: the shortcut inserts the assembled
+      command at the cursor position (`LBUFFER`), it does not *replace* the line.
+      From that single rule follow:
+  - **typing on the fly** — the command lands in the prompt, ready;
+  - **path completion done by the shell (Philosophy 2)** — a path-shaped `<param>`
+    is left empty with the cursor on it, and **your zsh** completes it (Tab, `~`,
+    globs, your own functions); we do not reimplement completion;
+  - **pipe composition** — since we insert at the cursor and the widget can be
+    re-invoked: `foo |` → widget → `grep …` is inserted → `|` → widget → … Nothing
+    more to write, it falls out of "insert at the cursor" + "re-invocable".
+- [ ] **Cursor/hole protocol**: how the widget learns where to put the cursor.
+      Options: runIt emits `offset\tcommand`, or a sentinel character the widget
+      strips. Cursor on the 1st hole if there is one, otherwise at end of line.
+- [ ] **Guardrail**: runIt inserts text, **the shell owns the pipe**. Do not try to
+      "understand" the pipeline (columns from stage n to stage n+1…) — that is the
+      navi trap wearing another hat.
+- [ ] **Root configuration**: `~/.config/runit/config` or a default, so that
+      `RUNIT_ROOT` need not be passed on every call.
+- [ ] **Clear errors**: fzf missing, `/dev/tty` unavailable, empty root.
 
-**Trois types de trous, pas un.** Le type vient du **nom** du paramètre, déjà
-écrit dans la fiche : aucune syntaxe nouvelle à inventer.
+## P2 — filling the variables (the differentiating core)
 
-| type | exemples | traitement |
+**Three kinds of holes, not one.** The kind comes from the **name** of the
+parameter, already written in the note: no new syntax to invent.
+
+| kind | examples | treatment |
 |---|---|---|
-| **valeur** | `<seuil>`, `<col>`, `<n>`, `<ip>` | substitution brute, ça suffit |
-| **syntaxe** | `<sep>`, `<delim>` | liste fermée → menu (`,` `;` `\t` `:` …) |
-| **programme / motif** | `<motif>`, `<regex>`, `<remplacement>` | pas de remplissage : trou vide, curseur posé dessus |
+| **value** | `<seuil>`, `<col>`, `<n>`, `<ip>` | raw substitution, that is enough |
+| **syntax** | `<sep>`, `<delim>` | closed list → menu (`,` `;` `\t` `:` …) |
+| **program / pattern** | `<motif>`, `<regex>`, `<remplacement>` | no filling: empty hole, cursor placed on it |
 
-La règle qui en découle :
+The rule that follows:
 
-> **runIt ne remplit pas ce qu'il ne saurait pas citer — il y pose le curseur.**
+> **runIt does not fill what it could not quote — it puts the cursor there.**
 
-C'est la Philosophie 2 (P1) étendue des chemins aux regex. Elle tient parce
-qu'on **insère** au lieu d'exécuter : une commande mal citée se voit avant
-Entrée. navi fait la même substitution brute que nous — le terrain est libre.
+This is Philosophy 2 (P1) extended from paths to regexes. It holds because we
+**insert** instead of executing: a badly quoted command is visible before you
+press Enter. navi does the same raw substitution we do — the ground is free.
 
-Constaté sur les fiches sed/awk. L'extraction des `<param>`, elle, tient déjà
-(`awk 'NR>=10 && NR<=20'` et `awk '$3 > 100'` ne produisent aucun faux positif :
-c'est la validation du nom en `alnum|_|-` qui filtre). Ce qui casse, c'est la
-valeur injectée dans un contexte qui a sa propre syntaxe :
+Observed on the sed/awk notes. Extracting the `<param>` holes does hold already
+(`awk 'NR>=10 && NR<=20'` and `awk '$3 > 100'` yield no false positive: the
+`alnum|_|-` validation of the name is what filters). What breaks is the value
+injected into a context that has a syntax of its own:
 
 ```
 sed 's/<motif>/…/g'  + /usr/local     → sed: unknown option to `s'
 awk '/<motif>/ …'    + erreur d'accès → sh: Unterminated quoted string
-sed 's/<motif>/[&]/' + a              → & = tout le match, erreur SILENCIEUSE
+sed 's/<motif>/[&]/' + a              → & = the whole match, SILENT error
 ```
 
-- [ ] **Typer le trou d'après son nom** : table nom → type (`motif`, `regex`,
-      `remplacement` → programme ; `sep`, `delim` → syntaxe ; le reste → valeur).
-      Zéro syntaxe nouvelle dans les fiches ; en contrepartie ça oblige à **nommer
-      juste** côté memento — ce qu'on veut de toute façon (cf. P4).
-- [ ] **Suggestions pour les variables énumérables** (type *syntaxe*) : `<sep>`,
-      `<niveau>`… → menu d'une liste fixe. Les variables de type **chemin** ne sont
-      PAS ici : elles passent par la complétion du shell (Ph. 2, cf. P1), pas par
-      un menu `fd`.
-- [ ] **Trous de programme laissés vides** (type *programme*) : ne rien demander,
-      sortir le trou vide et laisser le widget y poser le curseur — même protocole
-      curseur/trou qu'en P1.
-- [ ] **Échappement minimal et déterministe** : savoir si le trou est à l'intérieur
-      d'un `'…'` (scan des quotes jusqu'à l'offset) et, si oui, transformer `'` en
-      `'\''` dans la valeur saisie. ~15 lignes, règle le cas awk proprement. Le
-      délimiteur de `sed s///` n'est **pas** du code : c'est une convention de fiche
-      (`s|<motif>|<rempl>|`, déjà documentée dans `fiches/shell/sed.md`).
-- [ ] **Mémoire des saisies** : reproposer la dernière valeur utilisée pour un
-      `<param>` donné.
-- [ ] **Annulation propre** au milieu du remplissage (Échap → on ne sort rien).
+- [ ] **Type the hole from its name**: name → kind table (`motif`, `regex`,
+      `remplacement` → program; `sep`, `delim` → syntax; anything else → value).
+      No new syntax in the notes; in exchange it forces **naming things right** on
+      the memento side — which we want anyway (see P4).
+- [ ] **Suggestions for enumerable variables** (*syntax* kind): `<sep>`,
+      `<niveau>`… → menu of a fixed list. Path-shaped variables do NOT belong here:
+      they go through shell completion (Ph. 2, see P1), not through an `fd` menu.
+- [ ] **Program holes left empty** (*program* kind): ask nothing, emit the hole
+      empty and let the widget put the cursor on it — same cursor/hole protocol
+      as in P1.
+- [ ] **Minimal, deterministic escaping**: know whether the hole sits inside a
+      `'…'` (scan the quotes up to the offset) and, if so, turn `'` into `'\''` in
+      the typed value. ~15 lines, fixes the awk case cleanly. The `sed s///`
+      delimiter is **not** code: it is a note convention (`s|<motif>|<rempl>|`,
+      already documented in `fiches/shell/sed.md`).
+- [ ] **One single notion of "placeholder"** (DRY, and a real bug): `params()`
+      scans and validates the holes, `substitute()` does a naive `replace()` over a
+      `HashMap` — so the two definitions can drift, and the result already depends
+      on the iteration order. With `<a>` = `<b>` and `<b>` = `x`, the same input
+      yields `sed 's/<b>/x/'` or `sed 's/x/x/'` from one run to the next, because a
+      substituted value gets substituted again. Fix: have the scanner return the
+      holes **with their byte spans**, and rebuild the string in one pass from
+      those spans. The P2 typing work above lands on top of it.
+- [ ] **Memory of what was typed**: offer back the last value used for a given
+      `<param>`.
+- [ ] **Clean cancellation** in the middle of filling (Esc → we output nothing).
 
-## P3 — robustesse du parsing
+## P3 — parsing robustness
 
-- [ ] **Commandes multi-lignes** : heredoc, SQL sur plusieurs lignes,
-      continuations `\`. Aujourd'hui une ligne = un snippet.
-- [ ] **Heuristique `  #`** : une commande qui contient elle-même `  #` casse la
-      séparation desc/commande. Gérer les quotes, ou une syntaxe de desc explicite.
-- [ ] **Langages** : décider quoi faire des blocs `sql`, `toml`… (les afficher en
-      preview sans les proposer au lancement ?).
+- [ ] **Multi-line commands**: heredocs, SQL spread over several lines, `\`
+      continuations. Today one line = one snippet.
+- [ ] **The `  #` heuristic**: a command that itself contains `  #` breaks the
+      desc/command split. Handle quotes, or an explicit description syntax.
+- [ ] **Languages**: decide what to do with `sql`, `toml`… blocks (show them in
+      the preview without offering them for execution?).
 
-## P4 — convention côté fiches (à trancher avec le memento)
+## P4 — note-side convention (to settle together with the memento)
 
-- [ ] **Placeholders vs exemples concrets** : la convention « valeurs d'exemple »
-      est une règle de *sûreté* (pas de vraie valeur collable), pas une préférence
-      pour le concret. Donc `<IP>` est OK, et même plus sûr. Décider : placeholder
-      ce qui **varie par usage**, garder concret ce qui **illustre** (`chmod 600`).
-- [ ] Éventuel mode « repérer les valeurs réservées » (10.10.10.5, johndoe) comme
-      params candidats, sans toucher aux fiches.
+- [ ] **Placeholders vs concrete examples**: the "example values" convention is a
+      *safety* rule (no real pasteable value), not a preference for the concrete.
+      So `<IP>` is fine, and even safer. To decide: a placeholder for what **varies
+      per use**, keep concrete what **illustrates** (`chmod 600`).
+- [ ] Possible "spot the reserved values" mode (10.10.10.5, johndoe) as candidate
+      params, without touching the notes.
 
-## P5 — qualité & projet
+## P5 — quality & project
 
-- [ ] **Renommer le binaire** (collision avec l'init `runit`).
-- [ ] **README** : quoi, pourquoi, install, le widget.
-- [ ] **Tests d'intégration** sur un corpus fixture (dossier de fiches d'exemple).
-- [x] **CI** : `cargo fmt --check`, `clippy`, `test` (Forgejo Actions) —
-      `.forgejo/workflows/ci.yml`, image `rust:1.95-slim` epinglee.
+- [ ] **Rename the binary** (collision with the `runit` init system).
+- [ ] **README**: what, why, install, the widget.
+- [ ] **Integration tests** on a fixture corpus (a folder of sample notes).
+- [x] **CI**: `cargo fmt --check`, `clippy`, `test` (Forgejo Actions) —
+      `.forgejo/workflows/ci.yml`, image pinned to `rust:1.95-slim`.
 
-## Idées / plus loin
+## Ideas / further out
 
-- [ ] **TUI natif** (`ratatui`) avec rendu markdown stylé dans le preview, quand
-      fzf montrera ses limites.
-- [ ] **Mode `--run`** : exécuter directement (avec confirmation) au lieu d'imprimer.
-- [ ] Fonctionner sur **n'importe quelle base markdown**, pas que le memento.
+- [ ] **Native TUI** (`ratatui`) with styled markdown in the preview, once fzf
+      shows its limits.
+- [ ] **`--run` mode**: execute directly (with a confirmation) instead of printing.
+- [ ] Work on **any markdown base**, not just the memento.

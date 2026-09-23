@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-/// Extrait les `<param>` dans l'ordre d'apparition, sans doublon.
-/// Ne réagit **qu'aux `<...>`** : les `$VAR` sont de vraies variables
-/// d'environnement, on les laisse au shell.
+/// Extracts the `<param>` holes in order of appearance, without duplicates.
+/// Reacts **only to `<...>`**: `$VAR` are genuine environment variables, we
+/// leave them to the shell.
 pub fn params(cmd: &str) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let bytes = cmd.as_bytes();
@@ -29,7 +29,7 @@ pub fn params(cmd: &str) -> Vec<String> {
     out
 }
 
-/// Remplace chaque `<nom>` par la valeur saisie.
+/// Replaces every `<name>` with the value that was typed in.
 pub fn substitute(cmd: &str, valeurs: &HashMap<String, String>) -> String {
     let mut s = cmd.to_string();
     for (k, v) in valeurs {

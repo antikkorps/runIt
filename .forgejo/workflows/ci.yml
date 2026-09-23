@@ -6,19 +6,19 @@ on:
 
 jobs:
   ci:
-    # Depend des labels declares par le runner Forgejo (config.yml, runner.labels).
-    # Si le job ne demarre jamais, c'est presque toujours ce champ.
+    # Depends on the labels declared by the Forgejo runner (config.yml,
+    # runner.labels). If the job never starts, it is almost always this field.
     runs-on: docker
-    # Version epinglee : une montee de stable apporte de nouveaux lints clippy,
-    # donc un rouge surprise sans qu'on ait touche au code.
+    # Pinned version: a stable bump brings new clippy lints, hence a surprise
+    # red without anyone having touched the code.
     container:
       image: rust:1.95-slim
     steps:
       - uses: actions/checkout@v4
-      # Les images rust officielles sont installees en profil minimal :
-      # ni rustfmt ni clippy. Idempotent s'ils sont deja la.
+      # The official rust images ship the minimal profile: neither rustfmt nor
+      # clippy. Idempotent when they are already there.
       - run: rustup component add rustfmt clippy
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
-      # Pas de cache : zero dependance, la compilation part de std seul.
+      # No cache: zero dependency, the build starts from std alone.

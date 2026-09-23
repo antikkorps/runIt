@@ -1,60 +1,61 @@
 # runIt
 
-Fuzzy-pick une commande depuis un dossier de fiches **markdown**, remplis ses
-`<paramètres>`, récupère-la prête à lancer.
+Fuzzy-pick a command out of a folder of **markdown** notes, fill in its
+`<parameters>`, get it back ready to run.
 
-La fiche reste la **source unique** : pas de fichier `.cheat` à maintenir à côté,
-runIt lit le markdown directement. Et contrairement à un gestionnaire de
-cheatsheets classique, il garde **le détail de la fiche derrière la commande** :
-au moment de choisir, le volet de preview affiche la section de fiche autour de
-la ligne — le contexte et la saisie au même endroit.
+The note stays the **single source**: no `.cheat` file to maintain alongside it,
+runIt reads the markdown directly. And unlike a classic cheatsheet manager, it
+keeps **the detail of the note behind the command**: while you pick, the preview
+pane shows the section of the note around the line — the context and the typing
+in the same place.
 
-## Comment ça marche
+## How it works
 
-1. runIt parcourt tes fiches et indexe chaque **ligne** de bloc ` ```sh ` comme
-   une commande. Le commentaire de fin de ligne (`commande   # description`) sert
-   de libellé.
-2. `fzf` te laisse chercher par description ; le volet de droite montre la fiche.
-3. Les `<param>` de la ligne choisie te sont demandés un par un (les `$VAR`, elles,
-   sont laissées au shell).
-4. La commande assemblée sort sur `stdout`.
+1. runIt walks your notes and indexes every **line** of a ` ```sh ` block as a
+   command. The trailing comment (`command   # description`) becomes the label.
+2. `fzf` lets you search by description; the right-hand pane shows the note.
+3. The `<param>` holes of the chosen line are asked for one by one (`$VAR`, on
+   the other hand, are left to the shell).
+4. The assembled command goes to `stdout`.
 
-## Installer
+## Install
 
 ```sh
 cargo build --release
-# le binaire : target/release/runit
+# the binary: target/release/runit
 ```
 
-Dépend de [`fzf`](https://github.com/junegunn/fzf) (dans le PATH).
+Requires [`fzf`](https://github.com/junegunn/fzf) in the `PATH`.
 
-## Utiliser
+## Use
 
 ```sh
-# indiquer où sont les fiches, puis lancer
+# point it at the notes, then run it
 RUNIT_ROOT=~/documents/memento/fiches runit
 ```
 
-`RUNIT_ROOT` peut aussi être passé en premier argument ; à défaut, runIt cherche
-`./fiches`.
+`RUNIT_ROOT` can also be passed as the first argument; failing that, runIt looks
+for `./fiches`.
 
-## Format attendu des fiches
+## Expected note format
 
-- des blocs ` ```sh ` / ` ```bash ` contenant **une commande par ligne** ;
-- une description optionnelle après `#`, séparée par **deux espaces ou plus** ;
-- un `<paramètre>` là où une valeur change à chaque usage (`ssh root@<ip>`) —
-  jamais une vraie valeur collable ni un `$VAR` d'environnement.
+- ` ```sh ` / ` ```bash ` blocks holding **one command per line**;
+- an optional description after `#`, separated by **two or more spaces**;
+- a `<parameter>` wherever a value changes on every use (`ssh root@<ip>`) —
+  never a real pasteable value, never a `$VAR` from the environment.
 
 ```sh
 awk -F'<sep>' '{print substr($<col>,1,<n>)}' <fichier>   # extraire une colonne
 ```
 
-## État
+The notes themselves are in French, and so are the messages runIt prints; the
+code and its documentation are in English.
 
-MVP fonctionnel : parse, choix avec preview, remplissage, sortie sur stdout.
-Il **imprime** la commande — l'insertion directe dans le prompt (widget shell)
-et les suggestions de variable (picker de fichier) sont au [backlog](BACKLOG.md).
+## Status
+
+See [BACKLOG.md](BACKLOG.md) — it holds the current state and what comes next,
+so it is not repeated here.
 
 ## Licence
 
-Projet perso, à définir.
+Personal project, to be defined.

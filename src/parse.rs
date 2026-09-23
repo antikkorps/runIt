@@ -3,12 +3,12 @@ use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Langages dont les blocs contiennent des commandes réellement collables.
+/// Languages whose blocks hold commands that are actually pasteable.
 fn est_shell(lang: &str) -> bool {
     matches!(lang, "sh" | "bash" | "console" | "shell" | "zsh")
 }
 
-/// Parcourt `root` récursivement et collecte tous les snippets shell.
+/// Walks `root` recursively and collects every shell snippet.
 pub fn walk(root: &Path) -> Result<Vec<Snippet>, Box<dyn Error>> {
     let mut out = Vec::new();
     walk_into(root, &mut out)?;
@@ -36,7 +36,7 @@ fn parse_file(path: &Path, out: &mut Vec<Snippet>) -> Result<(), Box<dyn Error>>
     for (i, raw) in contenu.lines().enumerate() {
         let ligne = raw.trim_end();
 
-        // Ouverture / fermeture de bloc de code (fence ```)
+        // Opening / closing of a code block (``` fence)
         if let Some(rest) = ligne.trim_start().strip_prefix("```") {
             if in_block {
                 in_block = false;
@@ -48,7 +48,7 @@ fn parse_file(path: &Path, out: &mut Vec<Snippet>) -> Result<(), Box<dyn Error>>
         }
 
         if !in_block {
-            // Hors bloc : on ne suit que le fil des titres de section.
+            // Outside a block: we only track the thread of section headings.
             if let Some(titre) = ligne.strip_prefix("## ") {
                 section = titre.to_string();
             }
@@ -61,13 +61,13 @@ fn parse_file(path: &Path, out: &mut Vec<Snippet>) -> Result<(), Box<dyn Error>>
 
         let t = ligne.trim_start();
         if t.is_empty() || t.starts_with('#') {
-            continue; // ligne vide ou commentaire pur : rien à lancer
+            continue; // blank line or pure comment: nothing to run
         }
 
         let (command, description) = split_desc(ligne);
         out.push(Snippet {
             command,
-            // Pas de `# ...` ? on retombe sur le titre de section pour l'affichage.
+            // No `# ...`? fall back to the section heading for display.
             description: if description.is_empty() {
                 section.clone()
             } else {
@@ -81,9 +81,9 @@ fn parse_file(path: &Path, out: &mut Vec<Snippet>) -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
-/// Sépare `cmd   # description` sur **deux espaces ou plus** avant le `#`
-/// (ta convention d'alignement des commentaires). Heuristique volontairement
-/// simple : un `#` collé dans la commande n'est pas pris pour une description.
+/// Splits `cmd   # description` on **two or more spaces** before the `#` (the
+/// comment-alignment convention of the notes). Deliberately simple heuristic:
+/// a `#` glued to the command is not mistaken for a description.
 fn split_desc(ligne: &str) -> (String, String) {
     if let Some(pos) = ligne.find("  #") {
         let (cmd, desc) = ligne.split_at(pos);
@@ -94,8 +94,9 @@ fn split_desc(ligne: &str) -> (String, String) {
     }
 }
 
-/// Sous-commande `runit preview <chemin:ligne>` : appelée par fzf pour afficher
-/// **la section de fiche autour** de la ligne choisie — le détail all-in-one.
+/// `runit preview <path:line>` subcommand: called by fzf to display **the
+/// surrounding section of the note** for the highlighted line — the all-in-one
+/// detail.
 pub fn preview(loc: &str) -> Result<(), Box<dyn Error>> {
     let (file, line) = loc
         .rsplit_once(':')
@@ -104,7 +105,7 @@ pub fn preview(loc: &str) -> Result<(), Box<dyn Error>> {
     let contenu = fs::read_to_string(file)?;
     let lignes: Vec<&str> = contenu.lines().collect();
 
-    // Borne haute : le `## ` le plus proche au-dessus de la ligne cible.
+    // Upper bound: the nearest `## ` above the target line.
     let mut debut = 0;
     for j in (0..line.saturating_sub(1)).rev() {
         if lignes.get(j).is_some_and(|l| l.starts_with("## ")) {
@@ -112,7 +113,7 @@ pub fn preview(loc: &str) -> Result<(), Box<dyn Error>> {
             break;
         }
     }
-    // Borne basse : le prochain `## `.
+    // Lower bound: the next `## `.
     let mut fin = lignes.len();
     for (j, l) in lignes.iter().enumerate().skip(line) {
         if l.starts_with("## ") {

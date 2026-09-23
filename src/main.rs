@@ -10,12 +10,12 @@ use std::process::{Command, Stdio};
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
 
-    // Sous-commande cachée appelée par fzf pour le volet de preview.
+    // Hidden subcommand, called by fzf for the preview pane.
     if args.len() >= 3 && args[1] == "preview" {
         return parse::preview(&args[2]);
     }
 
-    // Racine des fiches : $RUNIT_ROOT, sinon 1er argument, sinon ./fiches
+    // Root of the notes: $RUNIT_ROOT, else the 1st argument, else ./fiches
     let root = std::env::var("RUNIT_ROOT")
         .ok()
         .or_else(|| args.get(1).cloned())
@@ -27,12 +27,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         std::process::exit(1);
     }
 
-    // 1. Choix de la commande via fzf (avec preview de la fiche).
+    // 1. Pick the command through fzf (with the note shown in the preview).
     let Some(cmd) = pick(&snippets)? else {
-        return Ok(()); // Échap dans fzf : on ne sort rien.
+        return Ok(()); // Esc in fzf: we output nothing.
     };
 
-    // 2. Remplissage des <param>, lus au clavier via /dev/tty.
+    // 2. Fill the `<param>` holes, read from the keyboard through /dev/tty.
     let params = fill::params(&cmd);
     let mut valeurs: HashMap<String, String> = HashMap::new();
     if !params.is_empty() {
@@ -47,13 +47,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // 3. La commande assemblée sort sur stdout : le widget shell l'insère.
+    // 3. The assembled command goes to stdout: the shell widget inserts it.
     println!("{}", fill::substitute(&cmd, &valeurs));
     Ok(())
 }
 
-/// Envoie les snippets à fzf (une ligne = `desc \t command \t file:line`),
-/// n'affiche que desc+command, et branche le preview sur le champ caché.
+/// Feeds the snippets to fzf (one line = `desc \t command \t file:line`),
+/// displays desc+command only, and wires the preview to the hidden field.
 fn pick(snippets: &[snippet::Snippet]) -> Result<Option<String>, Box<dyn Error>> {
     let exe = std::env::current_exe()?;
     let preview = format!("{} preview {{3}}", exe.display());
@@ -85,14 +85,14 @@ fn pick(snippets: &[snippet::Snippet]) -> Result<Option<String>, Box<dyn Error>>
                 s.line
             )?;
         }
-    } // stdin fermé ici : fzf peut afficher.
+    } // stdin closed here: fzf can now render.
 
     let out = fzf.wait_with_output()?;
     if !out.status.success() {
-        return Ok(None); // Échap, ou fzf absent/annulé.
+        return Ok(None); // Esc, or fzf missing / cancelled.
     }
     let ligne = String::from_utf8_lossy(&out.stdout);
-    // champ 2 (index 1) = la commande brute, avec ses <param>.
+    // field 2 (index 1) = the raw command, still holding its `<param>`.
     match ligne.split('\t').nth(1) {
         Some(cmd) if !cmd.trim().is_empty() => Ok(Some(cmd.trim().to_string())),
         _ => Ok(None),

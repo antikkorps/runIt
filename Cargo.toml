@@ -2,13 +2,13 @@
 name = "runit"
 version = "0.1.0"
 edition = "2021"
-description = "Fuzzy-pick une commande depuis des fiches markdown, remplit ses <parametres>, et la sort prete a lancer"
+description = "Fuzzy-pick a command from markdown notes, fill in its <parameters>, and output it ready to run"
 
-# Le binaire s'appelle `runit`. Collision possible avec l'init runit :
-# pour le renommer, change simplement la ligne `name` ci-dessous.
+# The binary is called `runit`. Possible collision with the runit init system:
+# to rename it, just change the `name` line below.
 [[bin]]
 name = "runit"
 path = "src/main.rs"
 
-# MVP volontairement sans dependance : std seul, s'appuie sur fzf en externe.
+# MVP deliberately dependency-free: std alone, leaning on fzf as an external tool.
 [dependencies]
