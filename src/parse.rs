@@ -20,7 +20,7 @@ fn walk_into(dir: &Path, out: &mut Vec<Snippet>) -> Result<(), Box<dyn Error>> {
         let path = entry?.path();
         if path.is_dir() {
             walk_into(&path, out)?;
-        } else if path.extension().map_or(false, |e| e == "md") {
+        } else if path.extension().is_some_and(|e| e == "md") {
             parse_file(&path, out)?;
         }
     }
@@ -97,7 +97,9 @@ fn split_desc(ligne: &str) -> (String, String) {
 /// Sous-commande `runit preview <chemin:ligne>` : appelée par fzf pour afficher
 /// **la section de fiche autour** de la ligne choisie — le détail all-in-one.
 pub fn preview(loc: &str) -> Result<(), Box<dyn Error>> {
-    let (file, line) = loc.rsplit_once(':').ok_or("format attendu : chemin:ligne")?;
+    let (file, line) = loc
+        .rsplit_once(':')
+        .ok_or("format attendu : chemin:ligne")?;
     let line: usize = line.trim().parse()?;
     let contenu = fs::read_to_string(file)?;
     let lignes: Vec<&str> = contenu.lines().collect();
@@ -105,7 +107,7 @@ pub fn preview(loc: &str) -> Result<(), Box<dyn Error>> {
     // Borne haute : le `## ` le plus proche au-dessus de la ligne cible.
     let mut debut = 0;
     for j in (0..line.saturating_sub(1)).rev() {
-        if lignes.get(j).map_or(false, |l| l.starts_with("## ")) {
+        if lignes.get(j).is_some_and(|l| l.starts_with("## ")) {
             debut = j;
             break;
         }
