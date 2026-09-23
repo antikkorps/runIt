@@ -13,7 +13,8 @@ reimplement navi feature by feature.
 - [x] fzf to pick, with a preview of the note's section
 - [x] filling of the `<param>` holes (never the `$VAR`), typed at the keyboard
 - [x] assembled command **printed** on stdout
-- [x] zero dependency (std + external fzf), 3 unit tests
+- [x] zero dependency (std + external fzf), 4 unit tests
+- [x] one single scanner, `holes()`, returning each hole with its byte span
 
 Accepted limit of the MVP: it **prints**, it does not insert into the prompt yet.
 
@@ -87,14 +88,16 @@ sed 's/<motif>/[&]/' + a              → & = the whole match, SILENT error
       the typed value. ~15 lines, fixes the awk case cleanly. The `sed s///`
       delimiter is **not** code: it is a note convention (`s|<motif>|<rempl>|`,
       already documented in `fiches/shell/sed.md`).
-- [ ] **One single notion of "placeholder"** (DRY, and a real bug): `params()`
-      scans and validates the holes, `substitute()` does a naive `replace()` over a
-      `HashMap` — so the two definitions can drift, and the result already depends
+- [x] **One single notion of "placeholder"** (DRY, and a real bug): `params()`
+      scanned and validated the holes while `substitute()` did a naive `replace()`
+      over a `HashMap` — two definitions free to drift, and a result that depended
       on the iteration order. With `<a>` = `<b>` and `<b>` = `x`, the same input
-      yields `sed 's/<b>/x/'` or `sed 's/x/x/'` from one run to the next, because a
-      substituted value gets substituted again. Fix: have the scanner return the
-      holes **with their byte spans**, and rebuild the string in one pass from
-      those spans. The P2 typing work above lands on top of it.
+      yielded `sed 's/<b>/x/'` or `sed 's/x/x/'` from one run to the next, because a
+      substituted value got substituted again. Now `holes()` is the only scanner: it
+      returns each hole with its byte span, `params()` is one of its clients (names,
+      in order, deduplicated) and `substitute()` rebuilds the string in a single
+      pass, never re-reading what it just wrote. The hole typing above lands on top
+      of it.
 - [ ] **Memory of what was typed**: offer back the last value used for a given
       `<param>`.
 - [ ] **Clean cancellation** in the middle of filling (Esc → we output nothing).
