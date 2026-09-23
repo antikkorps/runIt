@@ -123,6 +123,11 @@ sed 's/<motif>/[&]/' + a              → & = the whole match, SILENT error
 ## P5 — quality & project
 
 - [ ] **Rename the binary** (collision with the `runit` init system).
+- [ ] **Finish the English pass on identifiers**: the MVP still carries French
+      names (`nom`, `valide`, `est_shell`, `contenu`, `ligne`, `debut`, `fin`,
+      `marqueur`, `titre`). Comments, docs and the newer code are already English.
+      Do it with the LSP rename (`grn`), in its own commit — a rename diff mixed
+      with a behaviour change is a diff nobody reviews.
 - [ ] **README**: what, why, install, the widget.
 - [ ] **Integration tests** on a fixture corpus (a folder of sample notes).
 - [x] **CI**: `cargo fmt --check`, `clippy`, `test` (Forgejo Actions) —
