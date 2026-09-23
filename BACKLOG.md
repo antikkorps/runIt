@@ -113,7 +113,8 @@ sed 's/<motif>/[&]/' + a              → & = tout le match, erreur SILENCIEUSE
 - [ ] **Renommer le binaire** (collision avec l'init `runit`).
 - [ ] **README** : quoi, pourquoi, install, le widget.
 - [ ] **Tests d'intégration** sur un corpus fixture (dossier de fiches d'exemple).
-- [ ] **CI** : `cargo fmt --check`, `clippy`, `test` (Forgejo Actions).
+- [x] **CI** : `cargo fmt --check`, `clippy`, `test` (Forgejo Actions) —
+      `.forgejo/workflows/ci.yml`, image `rust:1.95-slim` epinglee.
 
 ## Idées / plus loin
 
