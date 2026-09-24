@@ -36,6 +36,20 @@ fn holes(cmd: &str) -> Vec<Hole> {
     out
 }
 
+/// True if byte offset `pos` sits inside a '...' span
+fn in_single_quotes(cmd: &str, pos: usize) -> bool {
+    let mut single = false;
+    let mut double = false;
+    for b in cmd[..pos].bytes() {
+        match b {
+            b'\'' if !double => single = !single,
+            b'"' if !single => double = !double,
+            _ => {}
+        }
+    }
+    single
+}
+
 /// Extracts the `<param>` holes in order of appearance, without duplicates.
 /// Reacts **only to `<...>`**: `$VAR` are genuine environment variables, we
 /// leave them to the shell.
@@ -56,6 +70,9 @@ pub fn substitute(cmd: &str, values: &HashMap<String, String>) -> String {
     for h in holes(cmd) {
         out.push_str(&cmd[last..h.start]);
         match values.get(&h.name) {
+            Some(value) if in_single_quotes(cmd, h.start) => {
+                out.push_str(&value.replace('\'', r"'\''"))
+            }
             Some(value) => out.push_str(value),
             None => out.push_str(&cmd[h.start..h.end]),
         }
@@ -96,5 +113,25 @@ mod tests {
 
             assert_eq!(substitute("sed 's/<a>/<b>/' f", &v), "sed 's/<b>/x/' f");
         }
+    }
+
+    #[test]
+    fn escapes_quote_inside_single_quotes() {
+        let mut v = HashMap::new();
+        v.insert("motif".to_string(), "l'erreur".to_string());
+        assert_eq!(
+            substitute("awk '/<motif>/' f", &v),
+            r"awk '/l'\''erreur/' f"
+        );
+    }
+
+    #[test]
+    fn substitute_after_single_quotes() {
+        let mut v = HashMap::new();
+        v.insert("fichier".to_string(), "l'a.txt".to_string());
+        assert_eq!(
+            substitute("awk '{print}' <fichier>", &v),
+            r"awk '{print}' l'a.txt"
+        );
     }
 }

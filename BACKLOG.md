@@ -83,11 +83,15 @@ sed 's/<motif>/[&]/' + a              → & = the whole match, SILENT error
 - [ ] **Program holes left empty** (*program* kind): ask nothing, emit the hole
       empty and let the widget put the cursor on it — same cursor/hole protocol
       as in P1.
-- [ ] **Minimal, deterministic escaping**: know whether the hole sits inside a
-      `'…'` (scan the quotes up to the offset) and, if so, turn `'` into `'\''` in
-      the typed value. ~15 lines, fixes the awk case cleanly. The `sed s///`
-      delimiter is **not** code: it is a note convention (`s|<motif>|<rempl>|`,
-      already documented in `fiches/shell/sed.md`).
+- [x] **Minimal, deterministic escaping**: `in_single_quotes()` scans the quotes
+      up to the hole's offset (each kind of quote neutralises the other, so the
+      `'` of `"it's"` does not count) and, inside `'…'`, `substitute()` turns `'`
+      into `'\''` in the typed value. Fixes the awk case: `awk '/<motif>/'` +
+      `l'erreur` now runs. The `sed s///` delimiter is **not** code: it is a note
+      convention (`s|<motif>|<rempl>|`, already documented in
+      `fiches/shell/sed.md`). Accepted limits: `\'` outside quotes is not
+      handled, and a value inside `"…"` is not escaped (`$`, `` ` ``, `"`) — the
+      command is inserted, not run, so it is seen before Enter.
 - [x] **One single notion of "placeholder"** (DRY, and a real bug): `params()`
       scanned and validated the holes while `substitute()` did a naive `replace()`
       over a `HashMap` — two definitions free to drift, and a result that depended
