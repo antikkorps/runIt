@@ -104,7 +104,15 @@ sed 's/<motif>/[&]/' + a              → & = the whole match, SILENT error
       of it.
 - [ ] **Memory of what was typed**: offer back the last value used for a given
       `<param>`.
-- [ ] **Clean cancellation** in the middle of filling (Esc → we output nothing).
+- [ ] **Cancellation**, two distinct moments:
+  - **Esc in fzf** (nothing picked yet): output nothing — already the case, stdout
+    empty and exit code 0. The widget must therefore test for an empty output,
+    not for the exit code.
+  - **Esc while filling the `<param>`**: output the picked command **with its
+    remaining holes left as-is**, instead of nothing. You keep the command you
+    just chose and finish it by hand in the prompt — the same rule as the program
+    holes: what runIt does not fill, it leaves to you. Today Esc is not handled
+    there at all (`read_line` just stores a `^[` in the value).
 
 ## P3 — parsing robustness
 
