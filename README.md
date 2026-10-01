@@ -21,13 +21,24 @@ in the same place.
 ## Install
 
 ```sh
-cargo build --release
-# the binary: target/release/runit
+cargo install --path .   # puts runit in ~/.cargo/bin
 ```
 
 Requires [`fzf`](https://github.com/junegunn/fzf) in the `PATH`.
 
+Then load the zsh widget from `~/.zshrc`, after any plugin manager so that
+nothing rebinds the key afterwards:
+
+```sh
+source ~/projects/perso/runIt/shell/runit.zsh
+```
+
 ## Use
+
+**Alt-R** in the prompt: pick a command, fill its holes, and it is inserted at
+the cursor — read it, then press Enter yourself.
+
+Without the widget:
 
 ```sh
 # point it at the notes, then run it
