@@ -13,18 +13,16 @@ reimplement navi feature by feature.
 - [x] fzf to pick, with a preview of the note's section
 - [x] filling of the `<param>` holes (never the `$VAR`), typed at the keyboard
 - [x] assembled command **printed** on stdout
-- [x] zero dependency (std + external fzf), 4 unit tests
+- [x] zero dependency (std + external fzf), unit tests on the filling
 - [x] one single scanner, `holes()`, returning each hole with its byte span
-
-Accepted limit of the MVP: it **prints**, it does not insert into the prompt yet.
 
 ## P1 — the widget, keystone
 
 Decision: runIt **lives through the widget** (no "run on its own" experience to
 polish). A single widget mechanism unlocks three capabilities at once.
 
-- [ ] **zsh widget — insert at the cursor**: the shortcut inserts the assembled
-      command at the cursor position (`LBUFFER`), it does not *replace* the line.
+- [x] **zsh widget — insert at the cursor** (`shell/runit.zsh`, Alt-R): the
+      shortcut inserts the assembled command at the cursor position (`LBUFFER`), it does not *replace* the line.
       From that single rule follow:
   - **typing on the fly** — the command lands in the prompt, ready;
   - **path completion done by the shell (Philosophy 2)** — a path-shaped `<param>`
@@ -33,6 +31,9 @@ polish). A single widget mechanism unlocks three capabilities at once.
   - **pipe composition** — since we insert at the cursor and the widget can be
     re-invoked: `foo |` → widget → `grep …` is inserted → `|` → widget → … Nothing
     more to write, it falls out of "insert at the cursor" + "re-invocable".
+  - *note*: zle turns the terminal echo off, so the widget re-enables it around
+    `runit` (`stty`). When runIt reads keys one by one (Esc while filling, P2),
+    it will handle echo itself and that workaround goes away.
 - [ ] **Cursor/hole protocol**: how the widget learns where to put the cursor.
       Options: runIt emits `offset\tcommand`, or a sentinel character the widget
       strips. Cursor on the 1st hole if there is one, otherwise at end of line.
