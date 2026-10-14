@@ -6,6 +6,12 @@ struct Hole {
     end: usize,
 }
 
+#[derive(PartialEq, Debug)]
+pub enum Kind {
+    Value,
+    Program,
+}
+
 fn holes(cmd: &str) -> Vec<Hole> {
     let mut out: Vec<Hole> = Vec::new();
     let bytes = cmd.as_bytes();
@@ -82,6 +88,15 @@ pub fn substitute(cmd: &str, values: &HashMap<String, String>) -> String {
     out
 }
 
+/// Identify the hole type
+#[cfg_attr(not(test), expect(dead_code, reason = "used by main.rs at step 2"))]
+pub fn kind(name: &str) -> Kind {
+    match name {
+        "motif" | "regex" | "rempl" | "remplacement" => Kind::Program,
+        _ => Kind::Value,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -133,5 +148,10 @@ mod tests {
             substitute("awk '{print}' <fichier>", &v),
             r"awk '{print}' l'a.txt"
         );
+    }
+
+    #[test]
+    fn program_holes_are_known_by_name() {
+        assert_eq!(kind("motif"), Kind::Program);
     }
 }
