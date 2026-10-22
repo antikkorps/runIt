@@ -70,9 +70,10 @@ pub fn params(cmd: &str) -> Vec<String> {
 }
 
 /// Replaces every `<name>` with the value that was typed in.
-pub fn substitute(cmd: &str, values: &HashMap<String, String>) -> String {
+pub fn substitute(cmd: &str, values: &HashMap<String, String>) -> (String, Option<usize>) {
     let mut out = String::new();
     let mut last = 0;
+    let mut first_missing: Option<usize> = None;
     for h in holes(cmd) {
         out.push_str(&cmd[last..h.start]);
         match values.get(&h.name) {
@@ -80,12 +81,22 @@ pub fn substitute(cmd: &str, values: &HashMap<String, String>) -> String {
                 out.push_str(&value.replace('\'', r"'\''"))
             }
             Some(value) => out.push_str(value),
-            None => out.push_str(&cmd[h.start..h.end]),
+            None => {
+                if first_missing.is_none() {
+                    first_missing = Some(out.len());
+                }
+            }
         }
         last = h.end;
     }
     out.push_str(&cmd[last..]);
-    out
+    (out, first_missing)
+}
+
+/// zsh's CURSOR counts characters, Rust offsets are bytes
+pub fn char_offset(cmd: &str, position: usize) -> usize {
+    let end = position.min(cmd.len());
+    cmd.char_indices().take_while(|&(i, _)| i < end).count()
 }
 
 /// Identify the hole type
@@ -116,7 +127,7 @@ mod tests {
     fn replaces_a_hole_with_its_value() {
         let mut v = HashMap::new();
         v.insert("ip".to_string(), "10.10.10.5".to_string());
-        assert_eq!(substitute("ssh root@<ip>", &v), "ssh root@10.10.10.5");
+        assert_eq!(substitute("ssh root@<ip>", &v).0, "ssh root@10.10.10.5");
     }
 
     #[test]
@@ -126,7 +137,7 @@ mod tests {
             v.insert("a".to_string(), "<b>".to_string());
             v.insert("b".to_string(), "x".to_string());
 
-            assert_eq!(substitute("sed 's/<a>/<b>/' f", &v), "sed 's/<b>/x/' f");
+            assert_eq!(substitute("sed 's/<a>/<b>/' f", &v).0, "sed 's/<b>/x/' f");
         }
     }
 
@@ -135,7 +146,7 @@ mod tests {
         let mut v = HashMap::new();
         v.insert("motif".to_string(), "l'erreur".to_string());
         assert_eq!(
-            substitute("awk '/<motif>/' f", &v),
+            substitute("awk '/<motif>/' f", &v).0,
             r"awk '/l'\''erreur/' f"
         );
     }
@@ -145,7 +156,7 @@ mod tests {
         let mut v = HashMap::new();
         v.insert("fichier".to_string(), "l'a.txt".to_string());
         assert_eq!(
-            substitute("awk '{print}' <fichier>", &v),
+            substitute("awk '{print}' <fichier>", &v).0,
             r"awk '{print}' l'a.txt"
         );
     }
@@ -153,5 +164,43 @@ mod tests {
     #[test]
     fn program_holes_are_known_by_name() {
         assert_eq!(kind("motif"), Kind::Program);
+    }
+
+    #[test]
+    fn cursor_count_chars_not_bytes() {
+        // "é" fait 2 octets mais 1 caractère
+        assert_eq!(char_offset("cp é <src>", 6), 5);
+        assert_eq!(char_offset("cp a <src>", 6), 6);
+    }
+
+    #[test]
+    fn reports_first_unfilled_hole_without_keeping_placeholder() {
+        // Aucune valeur fournie : le trou <ip> disparait de la sortie,
+        // et on signale la position (en octets) où il commençait dans `out`
+        let v = HashMap::new();
+        let (out, pos) = substitute("ssh root@<ip> -p 22", &v);
+
+        assert_eq!(out, "ssh root@ -p 22"); //"ssh root@" = 9 octets
+        assert_eq!(pos, Some(9));
+    }
+
+    #[test]
+    fn only_first_unfilled_hole_is_reported() {
+        let mut v = HashMap::new();
+        v.insert("a".to_string(), "X".to_string());
+        let (out, pos) = substitute("<a>-<b>-<c>", &v);
+
+        assert_eq!(out, "X--"); // <b> et <c> disparaissent aussi
+        assert_eq!(pos, Some(2)); //position après "X-"
+    }
+
+    #[test]
+    fn all_filled_means_none() {
+        let mut v = HashMap::new();
+        v.insert("ip".to_string(), "10.0.0.1".to_string());
+        let (out, pos) = substitute("ssh <ip>", &v);
+
+        assert_eq!(out, "ssh 10.0.0.1");
+        assert_eq!(pos, None)
     }
 }

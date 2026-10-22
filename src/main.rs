@@ -47,8 +47,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // 3. The assembled command goes to stdout: the shell widget inserts it.
-    println!("{}", fill::substitute(&cmd, &valeurs));
+    // 3. cursor positioned at first empty hole
+    let (line, cursor) = fill::substitute(&cmd, &valeurs);
+    let offset = fill::char_offset(&line, cursor.unwrap_or(line.len()));
+    println!("{offset}\t{line}");
     Ok(())
 }
 
